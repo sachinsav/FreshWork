@@ -1,24 +1,39 @@
 import pickle
-
+import os
 class datastore:
-    def __init__(self,filepath="D"):
-        self.filepath = filepath+":\\datastore"
-        self.data = {}
+    def __init__(self,path="D:/datastore"):
+        filepath = os.path.join(path, 'datastore')
+        if not os.path.exists(path):
+            os.makedirs(path)
+        self.filepath = filepath
+        self.data = self.loadData()
+        
+        
+    def loadData(self): 
+        try:
+            dbfile = open(self.filepath, 'rb')      
+            data = pickle.load(dbfile) 
+            dbfile.close()
+            return data
+        except:
+            return {}
 
-    def load(self):
-        dbfile = open(self.filepath,'rb')
-        self.data = pickle.load(dbfile)
-        print(self.data)
+    def getdata(self):
+        return self.data
 
-    def append(self):
-        dbfile = open(self.filepath, 'ab') 
-        pickle.dump(self.data,dbfile)
+    def commit(self):
+        try:
+            dbfile = open(self.filepath, 'wb')
+            pickle.dump(self.data,dbfile)
+            dbfile.close()
+        except:
+            pass
 
-    def create(self,key="name",val="sachin"):
+    def create(self,key="name2",val="sachin"):
         self.data[key] = val
-        self.append()
         
 
 db = datastore()
-db.create()
-db.load()
+# db.create()
+# db.commit()
+print(db.getdata())
