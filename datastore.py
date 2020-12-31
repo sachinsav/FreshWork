@@ -1,14 +1,18 @@
 import pickle
 import os
 import json
+from threading import Thread
+from time import sleep
 
-class datastore:
+class datastore(Thread):
     def __init__(self,path="D:/datastore"):
+        super(datastore, self).__init__()
         filepath = os.path.join(path, 'datastore')
         if not os.path.exists(path):
             os.makedirs(path)
         self.filepath = filepath
         self.data = self.loadData()
+        self.start()
         
         
     def loadData(self): 
@@ -17,39 +21,59 @@ class datastore:
             data = pickle.load(dbfile) 
             dbfile.close()
             return data
-        except:
+        except Exception as e:
+            print(e)
             return {}
-
-    def getdata(self):
+        
+    def run(self):
+        while True:
+            for key in self.data:
+                if self.data[key]["ttl"] > -1:
+                    self.data[key]["ttl"] -= 1
+            self.commit()
+            sleep(1)
+        
+    def getAlldata(self):
         return self.data
+    def getdata(self):
+        newData = {}
+        for key,val in self.data.items():
+            if val["ttl"]!=-1:
+                newData[key] = val
+        return newData
 
     def commit(self):
         try:
             dbfile = open(self.filepath, 'wb')
             pickle.dump(self.data,dbfile)
             dbfile.close()
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
-    def create(self,key="name3",val={"a":5}):
+    def create(self,key="name5",val={"ab":5},ttl=-2):
         if key in self.data:
             raise Exception("given key is already exists")
         else:
-            val = json.dumps(val)
+            val["ttl"] = ttl
+            val = self.getJsonVal(val)
+            val = json.loads(val)
             self.data[key] = val
+        self.commit()
 
-    def read(self,key):
-        return self.data.get(key)
+    def readByKey(self,key):
+        val = self.data.get(key)
+        if not val:
+            raise Exception("Given key is not present")
+        if val["ttl"]!=-1:
+            return json.dumps(val)
+
     def delete(self,key):
-        if key not in self.data:
-            raise Exception("given key does not exists")
-        return self.data.pop(key)
-        
+        val = self.data.get(key)
+        if not val:
+            raise Exception("Given key is not present")
+        if val["ttl"]!=-1:
+            return self.data.pop(key)
+        self.commit()
 
-db = datastore()
-# db.create()
-# db.commit()
-print(db.getdata())
-print(db.read("name3"))
-db.delete("name3")
-# db.commit()
+    def getJsonVal(self,val={"ab":5,"ttl":3}):
+        return json.dumps(val)
